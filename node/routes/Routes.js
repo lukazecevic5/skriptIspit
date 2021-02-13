@@ -112,6 +112,35 @@ route.post('/register', (req, res) => {
     }
 });
 
+route.post('/registeradmin', (req, res) => {
+    let { error } = Joi.validate(req.body, registersema);
+
+    if (error)
+        res.status(400).send(error.details[0].message);
+
+    else {
+        let query = "insert into user (username,password,mail,name,surname,admin) values (?, ?,?,?,?,?)";
+        let salt = bcrypt.genSaltSync(10);
+        let hash = bcrypt.hashSync(req.body.password,salt);
+        let formated = mysql.format(query, [req.body.username,hash,req.body.mail, req.body.name,req.body.surname, 1]);
+        pool.query(formated, (err, response) => {
+            if (err)
+                res.status(500).send(err.sqlMessage);
+            else {
+                query = 'select * from user where id=?';
+                formated = mysql.format(query, [response.insertId]);
+
+                pool.query(formated, (err, rows) => {
+                    if (err)
+                        res.status(500).send(err.sqlMessage);
+                    else
+                        res.send(rows[0]);
+                });
+            }
+        });
+    }
+});
+
 route.post('/login', (req, res) => {
     let { error } = Joi.validate(req.body, loginsema);
 
@@ -127,14 +156,14 @@ route.post('/login', (req, res) => {
                 res.status(500).send(err.sqlMessage);
             else{
                 if (rows.length == 0){
-                    res.send("Incorrect username");
+                    res.status(400);
                 }
                 else{
                     const valPassword = bcrypt.compareSync(req.body.password,rows[0].password);
                     if (valPassword){
                         res.send(rows[0]);
                     }else
-                        res.send("Incorrect password");
+                    res.status(400);
                 }
             }
                 
