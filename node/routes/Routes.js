@@ -11,6 +11,8 @@ const pool = mysql.createPool({
     database: 'prodavnica'
 });
 
+const bcrypt = require("bcrypt");
+
 
 const route = express.Router();
 
@@ -34,7 +36,20 @@ const registersema = Joi.object().keys({
 });
 
 
+async function hashPassword(password) {
+    const salt = await bcrypt.genSalt(10)
+    const hash = await bcrypt.hash(password, salt)
+    console.log(hash)
+    return hash;
+}
 
+async function checkPassword(password, password2) { 
+    const salt = await bcrypt.genSalt(10)
+    const hash = await bcrypt.hash(password, salt)
+    const isSame = await bcrypt.compare(password2, hash)
+    console.log(hash)
+    return isSame;
+}
 
 const link = Joi.object().keys({
     id: Joi.number().min(1).max(50).required()
@@ -89,8 +104,9 @@ route.post('/register', (req, res) => {
         res.status(400).send(error.details[0].message);
 
     else {
-        let query = "insert into user (username,password,mail,name,surname,admin) values (?, ?,?,?,?)";
-        let formated = mysql.format(query, [req.body.username, req.body.password,req.body.mail, req.body.name,req.body.surname, 0]);
+        let query = "insert into user (username,password,mail,name,surname,admin) values (?, ?,?,?,?,?)";
+        var hash = hashPassword(req.body.password);
+        let formated = mysql.format(query, [req.body.username,hash,req.body.mail, req.body.name,req.body.surname, 0]);
 
         pool.query(formated, (err, response) => {
             if (err)
@@ -109,6 +125,36 @@ route.post('/register', (req, res) => {
         });
     }
 });
+
+route.post('/login', (request, response) => {
+    let { error } = Joi.validate(request.body, loginsema);
+
+    if (error)
+        response.status(400).send(error.details[0].message);
+
+    else {
+        var username = request.body.username;
+	    var password = request.body.password;
+	if (username && password) {
+		pool.query('SELECT password FROM user WHERE username = ?', [username], function(error, results, fields) {
+			if (results.length > 0) {
+				if (checkPassword(password,results.toString())==true){
+                    response.send("Logged in");
+                } else{
+                    response.send("Incorect password");
+                }
+			} else {
+				response.send('Incorrect Username');
+			}			
+			response.end();
+		});
+	} else {
+		response.send('Please enter Username and Password!');
+		response.end();
+	}
+    }
+});
+
 
 route.get('/patika/:id', (req, res) => {
     let {error} = Joi.validate(req.params, link);
