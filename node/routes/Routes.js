@@ -13,6 +13,7 @@ const pool = mysql.createPool({
 
 const bcrypt = require("bcrypt");
 
+var admin = false;
 
 const route = express.Router();
 
@@ -33,6 +34,10 @@ const registersema = Joi.object().keys({
     name: Joi.string().trim().required(),
     surname: Joi.string().trim().required(),
     mail: Joi.string().trim().required(),
+});
+
+const reviewsema = Joi.object().keys({
+    text: Joi.string().trim().required()
 });
 
 
@@ -161,7 +166,13 @@ route.post('/login', (req, res) => {
                 else{
                     const valPassword = bcrypt.compareSync(req.body.password,rows[0].password);
                     if (valPassword){
-                        res.send(rows[0]);
+                        if (rows[0].admin==1){
+                            admin = true;
+                            res.send(rows[0]);
+                        }else{
+                            admin = false;
+                            res.send(rows[0]);
+                        }
                     }else
                     res.status(400);
                 }
@@ -172,6 +183,9 @@ route.post('/login', (req, res) => {
     }
 });
 
+route.get('/isadmin', (req, res) => {
+    res.send(admin);
+});
 
 route.get('/patika/:id', (req, res) => {
     let {error} = Joi.validate(req.params, link);
@@ -187,6 +201,25 @@ route.get('/patika/:id', (req, res) => {
                 res.status(500).send(err.sqlMessage);
             else
                 res.send(rows[0]);
+
+        });
+    }
+});
+
+route.get('/reviews/:id', (req, res) => {
+    let {error} = Joi.validate(req.params, link);
+
+    if(error){
+        res.status(400).send(error.details[0].message);
+    }else {
+        let query = 'select * from review where patika=?';
+        let formated = mysql.format(query, [req.params.id]);
+
+        pool.query(formated, (err, rows) => {
+            if (err)
+                res.status(500).send(err.sqlMessage);
+            else
+                res.send(rows);
 
         });
     }
@@ -228,6 +261,41 @@ route.post('/updatepatika/:id', (req, res) => {
 
 });
 
+route.post('/addreview/:id', (req, res) => {
+
+    let { error } = Joi.validate(req.params, link);
+
+    if (error) {
+        res.status(400).send(error.details[0].message);
+    }
+    else {
+        let { error } = Joi.validate(req.body, reviewsema);
+        if(error){
+            res.status(400).send(error.details[0].message);
+        }
+        else {
+            let query = "insert into review (text,patika) values (?, ?)";
+            let formated = mysql.format(query, [req.body.text, req.params.id]);
+
+            pool.query(formated, (err, response) => {
+                if (err)
+                    res.status(500).send(err.sqlMessage);
+                else {
+                    query = 'select * from review where id=?';
+                    formated = mysql.format(query, [response.insertId]);
+
+                    pool.query(formated, (err, rows) => {
+                        if (err)
+                            res.status(500).send(err.sqlMessage);
+                        else
+                            res.send(rows[0]);
+                    });
+                }
+            });
+        }
+    }
+
+});
 
 route.get('/delpatika/:id', (req, res) => {
     let {error} = Joi.validate(req.params, link);
