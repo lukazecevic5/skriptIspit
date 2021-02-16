@@ -23,6 +23,10 @@ const sema = Joi.object().keys({
     model: Joi.string().trim().required(),
 });
 
+const semamajica = Joi.object().keys({
+    marka: Joi.string().trim().required(),
+});
+
 const loginsema = Joi.object().keys({
     username: Joi.string().trim().required(),
     password: Joi.string().trim().required(),
@@ -75,6 +79,44 @@ route.post('/addpatika', (req, res) => {
                 res.status(500).send(err.sqlMessage);
             else {
                 query = 'select * from patike where id=?';
+                formated = mysql.format(query, [response.insertId]);
+
+                pool.query(formated, (err, rows) => {
+                    if (err)
+                        res.status(500).send(err.sqlMessage);
+                    else
+                        res.send(rows[0]);
+                });
+            }
+        });
+    }
+});
+
+route.get('/majice', (req, res) => {
+    pool.query('select * from majice', (err, rows) => {
+        if (err)
+            res.status(500).send(err.sqlMessage);
+        else
+            res.send(rows);
+    });
+});
+
+
+route.post('/addmajica', (req, res) => {
+    let { error } = Joi.validate(req.body, semamajica);
+
+    if (error)
+        res.status(400).send(error.details[0].message);
+
+    else {
+        let query = "insert into majice (marka) values (?)";
+        let formated = mysql.format(query, [req.body.marka]);
+
+        pool.query(formated, (err, response) => {
+            if (err)
+                res.status(500).send(err.sqlMessage);
+            else {
+                query = 'select * from majice where id=?';
                 formated = mysql.format(query, [response.insertId]);
 
                 pool.query(formated, (err, rows) => {
@@ -206,24 +248,6 @@ route.get('/patika/:id', (req, res) => {
     }
 });
 
-route.get('/reviews/:id', (req, res) => {
-    let {error} = Joi.validate(req.params, link);
-
-    if(error){
-        res.status(400).send(error.details[0].message);
-    }else {
-        let query = 'select * from review where patika=?';
-        let formated = mysql.format(query, [req.params.id]);
-
-        pool.query(formated, (err, rows) => {
-            if (err)
-                res.status(500).send(err.sqlMessage);
-            else
-                res.send(rows);
-
-        });
-    }
-});
 
 route.post('/updatepatika/:id', (req, res) => {
 
@@ -261,41 +285,7 @@ route.post('/updatepatika/:id', (req, res) => {
 
 });
 
-route.post('/addreview/:id', (req, res) => {
 
-    let { error } = Joi.validate(req.params, link);
-
-    if (error) {
-        res.status(400).send(error.details[0].message);
-    }
-    else {
-        let { error } = Joi.validate(req.body, reviewsema);
-        if(error){
-            res.status(400).send(error.details[0].message);
-        }
-        else {
-            let query = "insert into review (text,patika) values (?, ?)";
-            let formated = mysql.format(query, [req.body.text, req.params.id]);
-
-            pool.query(formated, (err, response) => {
-                if (err)
-                    res.status(500).send(err.sqlMessage);
-                else {
-                    query = 'select * from review where id=?';
-                    formated = mysql.format(query, [response.insertId]);
-
-                    pool.query(formated, (err, rows) => {
-                        if (err)
-                            res.status(500).send(err.sqlMessage);
-                        else
-                            res.send(rows[0]);
-                    });
-                }
-            });
-        }
-    }
-
-});
 
 route.get('/delpatika/:id', (req, res) => {
     let {error} = Joi.validate(req.params, link);
@@ -313,6 +303,93 @@ route.get('/delpatika/:id', (req, res) => {
                 let poruka = rows[0];
 
                 let query = 'delete from patike where id=?';
+                let formated = mysql.format(query, [req.params.id]);
+
+                pool.query(formated, (err, rows) => {
+                    if (err)
+                        res.status(500).send(err.sqlMessage);
+                    else
+                        res.send(poruka);
+                });
+            }
+        });
+    }
+});
+
+route.get('/majica/:id', (req, res) => {
+    let {error} = Joi.validate(req.params, link);
+
+    if(error){
+        res.status(400).send(error.details[0].message);
+    }else {
+        let query = 'select * from majice where id=?';
+        let formated = mysql.format(query, [req.params.id]);
+
+        pool.query(formated, (err, rows) => {
+            if (err)
+                res.status(500).send(err.sqlMessage);
+            else
+                res.send(rows[0]);
+
+        });
+    }
+});
+
+
+route.post('/updatemajica/:id', (req, res) => {
+
+    let { error } = Joi.validate(req.params, link);
+
+    if (error) {
+        res.status(400).send(error.details[0].message);
+    }
+    else {
+        let { error } = Joi.validate(req.body, semamajica);
+        if(error){
+            res.status(400).send(error.details[0].message);
+        }
+        else {
+            let query = "update majice set marka=? where id=?";
+            let formated = mysql.format(query, [req.body.marka, req.params.id]);
+
+            pool.query(formated, (err, response) => {
+                if (err)
+                    res.status(500).send(err.sqlMessage);
+                else {
+                    query = 'select * from majice where id=?';
+                    formated = mysql.format(query, [req.params.id]);
+
+                    pool.query(formated, (err, rows) => {
+                        if (err)
+                            res.status(500).send(err.sqlMessage);
+                        else
+                            res.send(rows[0]);
+                    });
+                }
+            });
+        }
+    }
+
+});
+
+
+
+route.get('/delmajica/:id', (req, res) => {
+    let {error} = Joi.validate(req.params, link);
+    if(error)
+        res.status(400).send(error.details[0].message);
+    else
+    {
+        let query = 'select * from majice where id=?';
+        let formated = mysql.format(query, [req.params.id]);
+
+        pool.query(formated, (err, rows) => {
+            if (err)
+                res.status(500).send(err.sqlMessage);
+            else {
+                let poruka = rows[0];
+
+                let query = 'delete from majice where id=?';
                 let formated = mysql.format(query, [req.params.id]);
 
                 pool.query(formated, (err, rows) => {
