@@ -1,8 +1,9 @@
 from django.contrib import admin
 from django.urls import path
-from . import views
+from .views import MajiceChartView, PatikeChartView
 
 app_name = 'app'
 urlpatterns = [
-    path('', views.index, name='index'),
+    path('majice/', MajiceChartView.as_view(), name='majice'),
+    path('patike/', PatikeChartView.as_view(), name='patike'),
 ]
